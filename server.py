@@ -11,20 +11,20 @@ PORT = 1234 #Port 번호 지정 (충돌시 변경가능)
 
 class TicTacToe:
     def __init__(self) -> None:
-        self.board = [[0] for _ in range(5) for _ in range(5)]
+        self.board = [[0 for _ in range(5)] for _ in range(5)]
 
 
-    def _player_marks(self, player: int) -> List[int]:
+    def _player_marks(self, board: List[List[int]], player: int) -> List[int]:
         marks = []
         num = 0
-        for cols in self.board:
+        for cols in board:
             for row in cols:
                 if row == player:
                     marks.append(num)
                 num += 1
         return marks
 
-    def is_winner(self, player: int) -> str:
+    def is_winner(self, board: List[List[int]], player: int) -> str:
         """
         승리조건 : 
             가로는 +1씩 증가하는 연속적인 4개의 수
@@ -40,16 +40,17 @@ class TicTacToe:
                 ] for e in common_differences
             ]
 
-        marks = self._player_marks(player)
-        for mark in marks[:-4]:
+        marks = self._player_marks(board, player)
+        for mark in marks[:-3]:
             for win_condition in _win_conditions(mark):
                 if list(set(win_condition) & set(marks)) == win_condition:
                     print("{} is winner.".format(player))
                     return player
+        return
 
 
-# GAME_ROOM = []
-# _id = 0
+GAMEROOMS = []
+_id = 0
 
 # 소켓을 생성한다.
 # socket.AF_INET - address family, IPv4, some otehr possible are AF_INET6, AF_BLUETOOTH, AF_UNIX
@@ -109,8 +110,8 @@ while True:
     #   - writing - sockets ready for data to be send thru them
     #   - errors  - sockets with some exceptions
     # This is a blocking call, code execution will "wait" here and "get" notified in case any action should be taken
-    read_sockets, _, exception_sockets = select.select(sockets_list, [], sockets_list)
-
+    read_sockets, _, exception_sockets = \
+        select.select(sockets_list, [], sockets_list)
 
     # Iterate over notified sockets
     for notified_socket in read_sockets:
@@ -138,16 +139,16 @@ while True:
                 'Accepted new connection from {}:{}, username: {}' \
                     .format(*client_address, user['data'].decode('utf-8'))
             )
-            # print("Create GAME ROOM : {}".format(user['data'].decode('utf-8')))
-            # GAME_ROOM.append(
-            #     {
-            #         "_id": _id,
-            #         "HOST NAME": user['data'].decode('utf-8'),
-            #         "Board" : TicTacToe().board
-            #     }
-            # )
-            # # 다음 생성된 방 id는 1씩 증가.
-            # _id += 1
+            print("Create GAME ROOM : {}".format(user['data'].decode('utf-8')))
+            GAMEROOMS.append(
+                {
+                    "_id": _id,
+                    "HOST NAME": user['data'].decode('utf-8'),
+                    "Board" : TicTacToe().board
+                }
+            )
+            # 다음 생성된 방 id는 1씩 증가.
+            _id += 1
 
         # Else existing socket is sending a message
         else:
@@ -173,17 +174,21 @@ while True:
 
             # 해당 message가 좌표값인지
             if re.fullmatch("[0-9], [0-9]", message["data"].decode("utf-8")):
+                x, y = message["data"].decode("utf-8").split(', ')
                 print("Check")
+                hostName = user["data"].decode("utf-8")
+                gameRoom = next((item for item in GAMEROOMS if item["HOST NAME"] == hostName), None)
+                print(gameRoom["Board"])
+                gameRoom["Board"][int(x)][int(y)] = 1
+                print(gameRoom)
+
+                winner = TicTacToe().is_winner(gameRoom["Board"], 1)
 
             # Iterate over connected clients and broadcast message
             for client_socket in clients:
 
                 # But don't sent it to sender
                 if client_socket != notified_socket:
-                    print(
-                        user['header'] + user['data'] 
-                        + message['header'] + message['data']
-                    )
                     # Send user and message (both with their headers)
                     # We are reusing here message header sent by sender, and saved username header send by user when he connected
                     client_socket.send(
