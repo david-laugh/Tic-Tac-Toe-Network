@@ -8,45 +8,50 @@ HEADER_LENGTH = 10
 IP = "127.0.0.1" #Local(Internal) IP 주소 지정
 PORT = 1234 #Port 번호 지정 (충돌시 변경가능)
 
+PLAYER_ONE = 1
+PLAYER_TWO = 2
 
 class TicTacToe:
     def __init__(self) -> None:
         self.board = [[0 for _ in range(5)] for _ in range(5)]
 
-
-    def _player_marks(self, board: List[List[int]], player: int) -> List[int]:
+    def _player_marks(
+            self, board: List[List[int]], player: int
+        ) -> List[int]:
         marks = []
-        num = 0
+        x = 0
         for cols in board:
+            y = 0
             for row in cols:
                 if row == player:
-                    marks.append(num)
-                num += 1
+                    marks.append((x, y))
+                y += 1
+            x += 1
         return marks
 
     def is_winner(self, board: List[List[int]], player: int) -> str:
         """
-        승리조건 : 
-            가로는 +1씩 증가하는 연속적인 4개의 수
-            세로는 +5씩 증가하는 연속적인 4개의 수
-            대각선 / 는 +4씩 증가하는 연속적인 4개의 수
-            대각선 \ 는 +8씩 증가하는 연속적인 4개의 수
+        승리조건 :
+            가로는 y만 +1 증가하는 연속적인 4개의 수
+            세로는 x만 +1 증가하는 연속적인 4개의 수
+            대각선 / 는 x, y가 각각 +1, +1 증가하는 연속적인 4개의 수
+            대각선 \ 는 x, y가 각각 +1, -1 증가하는 연속적인 4개의 수
         """
-        def _win_conditions(num):
-            common_differences = [1, 4, 5, 8]
+        def _win_conditions(mark):
+            common_differences = [(0, 1), (1, 0), (1, 1), (1, -1)]
             return [
                 [
-                    e * i + num for i in range(4)
+                    (mark[0] + e[0] * i, mark[1] + e[1] * i) for i in range(4)
                 ] for e in common_differences
             ]
 
         marks = self._player_marks(board, player)
         for mark in marks[:-3]:
             for win_condition in _win_conditions(mark):
-                if list(set(win_condition) & set(marks)) == win_condition:
+                print(list(set(win_condition) & set(marks)))
+                print(win_condition)
+                if set(set(win_condition) & set(marks)) == set(win_condition):
                     print("{} is winner.".format(player))
-                    return player
-        return
 
 
 GAMEROOMS = []
@@ -144,7 +149,8 @@ while True:
                 {
                     "_id": _id,
                     "HOST NAME": user['data'].decode('utf-8'),
-                    "Board" : TicTacToe().board
+                    "Board" : TicTacToe().board,
+                    "YOUR TURN" : PLAYER_ONE
                 }
             )
             # 다음 생성된 방 id는 1씩 증가.
@@ -178,11 +184,14 @@ while True:
                 print("Check")
                 hostName = user["data"].decode("utf-8")
                 gameRoom = next((item for item in GAMEROOMS if item["HOST NAME"] == hostName), None)
-                print(gameRoom["Board"])
-                gameRoom["Board"][int(x)][int(y)] = 1
-                print(gameRoom)
 
-                winner = TicTacToe().is_winner(gameRoom["Board"], 1)
+                gameRoom["Board"][int(x)][int(y)] = gameRoom["YOUR TURN"]
+                if gameRoom["YOUR TURN"] == PLAYER_ONE:
+                    TicTacToe().is_winner(gameRoom["Board"], gameRoom["YOUR TURN"])
+                    gameRoom["YOUR TURN"] = PLAYER_TWO
+                else:
+                    TicTacToe().is_winner(gameRoom["Board"], gameRoom["YOUR TURN"])
+                    gameRoom["YOUR TURN"] = PLAYER_ONE
 
             # Iterate over connected clients and broadcast message
             for client_socket in clients:
