@@ -48,8 +48,6 @@ class TicTacToe:
         marks = self._player_marks(board, player)
         for mark in marks[:-3]:
             for win_condition in _win_conditions(mark):
-                print(list(set(win_condition) & set(marks)))
-                print(win_condition)
                 if set(set(win_condition) & set(marks)) == set(win_condition):
                     print("{} is winner.".format(player))
 
@@ -145,14 +143,29 @@ while True:
                     .format(*client_address, user['data'].decode('utf-8'))
             )
             print("Create GAME ROOM : {}".format(user['data'].decode('utf-8')))
-            GAMEROOMS.append(
-                {
-                    "_id": _id,
-                    "HOST NAME": user['data'].decode('utf-8'),
-                    "Board" : TicTacToe().board,
-                    "YOUR TURN" : PLAYER_ONE
-                }
-            )
+            # 게임방을 생성하는 플레이어는 Player One
+            if "Create a Game Room" in user['data'].decode('utf-8'):
+                tmp = user['data'].decode('utf-8')
+                hostName = tmp.split(" ")[-1]
+                GAMEROOMS.append(
+                    {
+                        "_id": _id,
+                        "HOST NAME": hostName,
+                        "Board" : TicTacToe().board,
+                        "YOUR TURN" : PLAYER_ONE,
+                        "Player" : {
+                            "PLAYER_ONE" : hostName,
+                            "PLAYER_TWO" : ""
+                        }
+                    }
+                )
+            # 게임방을 참가하는 플레이어는 Player Two
+            elif "Join the Game Room" in user['data'].decode('utf-8'):
+                tmp = user['data'].decode('utf-8')
+                hostName, user = tmp.split(" ")[-2], tmp.split(" ")[-1]
+                gameRoom = next((item for item in GAMEROOMS if item["HOST NAME"] == hostName), None)
+                gameRoom["Player"]["PLAYER_TWO"] = user
+
             # 다음 생성된 방 id는 1씩 증가.
             _id += 1
 
@@ -181,17 +194,25 @@ while True:
             # 해당 message가 좌표값인지
             if re.fullmatch("[0-9], [0-9]", message["data"].decode("utf-8")):
                 x, y = message["data"].decode("utf-8").split(', ')
-                print("Check")
-                hostName = user["data"].decode("utf-8")
-                gameRoom = next((item for item in GAMEROOMS if item["HOST NAME"] == hostName), None)
+                tmp = user['data'].decode('utf-8')
+                playerName = tmp.split(" ")[-1]
 
-                gameRoom["Board"][int(x)][int(y)] = gameRoom["YOUR TURN"]
-                if gameRoom["YOUR TURN"] == PLAYER_ONE:
-                    TicTacToe().is_winner(gameRoom["Board"], gameRoom["YOUR TURN"])
-                    gameRoom["YOUR TURN"] = PLAYER_TWO
+                gameRoom = next((item for item in GAMEROOMS if playerName in item["Player"].values()), None)
+
+                if ( dict(map(reversed, gameRoom["Player"].items()))[playerName] == "PLAYER_ONE" \
+                    and gameRoom["YOUR TURN"] == PLAYER_ONE ) \
+                    or ( dict(map(reversed, gameRoom["Player"].items()))[playerName] == "PLAYER_TWO" \
+                    and gameRoom["YOUR TURN"] == PLAYER_TWO ):
+                    gameRoom["Board"][int(x)][int(y)] = gameRoom["YOUR TURN"]
+
+                    if gameRoom["YOUR TURN"] == PLAYER_ONE:
+                        TicTacToe().is_winner(gameRoom["Board"], gameRoom["YOUR TURN"])
+                        gameRoom["YOUR TURN"] = PLAYER_TWO
+                    else:
+                        TicTacToe().is_winner(gameRoom["Board"], gameRoom["YOUR TURN"])
+                        gameRoom["YOUR TURN"] = PLAYER_ONE
                 else:
-                    TicTacToe().is_winner(gameRoom["Board"], gameRoom["YOUR TURN"])
-                    gameRoom["YOUR TURN"] = PLAYER_ONE
+                    print("해당 유저의 턴이 아닙니다.")
 
             # Iterate over connected clients and broadcast message
             for client_socket in clients:
