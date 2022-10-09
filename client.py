@@ -2,12 +2,15 @@ import socket
 import select
 import errno
 import sys
+import pickle
 
 HEADER_LENGTH = 10
 
 IP = "127.0.0.1"
 PORT = 1234
-my_username = input("Username: ")
+
+command = input("Command: ")
+my_username = command.split(" ")[-1]
 
 # 소켓을 생성
 # socket.AF_INET - address family, IPv4, some otehr possible are AF_INET6, AF_BLUETOOTH, AF_UNIX
@@ -22,9 +25,9 @@ client_socket.setblocking(False)
 
 # Prepare username and header and send them
 # We need to encode username to bytes, then count number of bytes and prepare header of fixed size, that we encode to bytes as well
-username = my_username.encode('utf-8')
-username_header = f"{len(username):<{HEADER_LENGTH}}".encode('utf-8')
-client_socket.send(username_header + username)
+command = command.encode('utf-8')
+command_header = f"{len(command):<{HEADER_LENGTH}}".encode('utf-8')
+client_socket.send(command_header + command)
 
 while True:
 
@@ -44,28 +47,38 @@ while True:
         while True:
 
             # Receive our "header" containing username length, it's size is defined and constant
-            username_header = client_socket.recv(HEADER_LENGTH)
+            command_header = client_socket.recv(HEADER_LENGTH)
 
             # If we received no data, server gracefully closed a connection, for example using socket.close() or socket.shutdown(socket.SHUT_RDWR)
-            if not len(username_header):
+            if not len(command_header):
                 print('Connection closed by the server')
                 sys.exit()
 
             # Convert header to int value
-            username_length = int(username_header.decode('utf-8').strip())
+            username_length = int(command_header.decode('utf-8').strip())
 
             # Receive and decode username
             username = client_socket.recv(username_length).decode('utf-8')
+            username = username.split(" ")[-1]
 
             # Now do the same for message (as we received username, we received whole message, there's no need to check if it has any length)
             message_header = client_socket.recv(HEADER_LENGTH)
             message_length = int(message_header.decode('utf-8').strip())
             message = client_socket.recv(message_length).decode('utf-8')
 
+            player_header = client_socket.recv(HEADER_LENGTH)
+            player_length = int(player_header.decode('utf-8').strip())
+            player = client_socket.recv(player_length).decode('utf-8')
+
+            board_header = client_socket.recv(HEADER_LENGTH)
+            board_length = int(board_header.decode('utf-8').strip())
+            board = client_socket.recv(board_length)
+            board = pickle.loads(board)
+
             # Print message
-            print(f'{username} > {message}'+'가보냈다')
-            if username == 'ggg':
-                print('성종 학생이 보냄')
+            # if message
+            if player == my_username:
+                print(f'{username} > {message}')
 
     except IOError as e:
         # This is normal on non blocking connections - when there are no incoming data error is going to be raised
