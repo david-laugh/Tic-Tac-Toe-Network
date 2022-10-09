@@ -2,6 +2,7 @@ from typing import List
 import socket
 import select
 import re
+import pickle
 
 HEADER_LENGTH = 10
 
@@ -51,7 +52,7 @@ class TicTacToe:
                 if set(set(win_condition) & set(marks)) == set(win_condition):
                     print("{} is winner.".format(player))
 
-
+SOCKETS = {}
 GAMEROOMS = []
 _id = 0
 
@@ -142,6 +143,8 @@ while True:
                 'Accepted new connection from {}:{}, username: {}' \
                     .format(*client_address, user['data'].decode('utf-8'))
             )
+            SOCKETS[user['data'].decode('utf-8').split(" ")[-1]] = client_address
+
             print("Create GAME ROOM : {}".format(user['data'].decode('utf-8')))
             # 게임방을 생성하는 플레이어는 Player One
             if "Create a Game Room" in user['data'].decode('utf-8'):
@@ -189,7 +192,11 @@ while True:
             # Get user by notified socket, so we will know who sent the message
             user = clients[notified_socket]
 
-            print(f'Received message from {user["data"].decode("utf-8")}: {message["data"].decode("utf-8")}')
+            print(
+                f'Received message from \
+                    {user["data"].decode("utf-8").split(" ")[-1]}: \
+                    {message["data"].decode("utf-8")}'
+            )
 
             # 해당 message가 좌표값인지
             if re.fullmatch("[0-9], [0-9]", message["data"].decode("utf-8")):
@@ -216,14 +223,35 @@ while True:
 
             # Iterate over connected clients and broadcast message
             for client_socket in clients:
-
                 # But don't sent it to sender
                 if client_socket != notified_socket:
                     # Send user and message (both with their headers)
                     # We are reusing here message header sent by sender, and saved username header send by user when he connected
+                    tmp = user['data'].decode('utf-8')
+                    playerName = tmp.split(" ")[-1]
+
+                    gameRoom = next((item for item in GAMEROOMS if playerName in item["Player"].values()), None)
+                    players = list(gameRoom["Player"].values())
+                    players.remove(playerName)
+                    # print(playerName)
+                    # print(gameRoom["Player"].values())
+                    # print(client_socket.getpeername())
+                    # if playerName in gameRoom["Player"].values():
+                    #     print(SOCKETS[players[0]])
+
+                    player = players[0].encode('utf-8')
+                    player_header = f"{len(player):<{HEADER_LENGTH}}".encode('utf-8')
+
+                    board = gameRoom["Board"]
+                    board = pickle.dumps(board)
+                    board_header = f"{len(board):<{HEADER_LENGTH}}".encode('utf-8')
+                    print(board_header)
+
                     client_socket.send(
-                        user['header'] + user['data'] 
+                        user['header'] + user['data']
                         + message['header'] + message['data']
+                        + player_header + player
+                        + board_header + board
                     )
 
     # It's not really necessary to have this, but will handle some socket exceptions just in case
