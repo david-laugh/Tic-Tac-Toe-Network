@@ -11,6 +11,7 @@ PORT = 1234 #Port 번호 지정 (충돌시 변경가능)
 
 PLAYER_ONE = 1
 PLAYER_TWO = 2
+WIN_PLAYER = -1
 
 class TicTacToe:
     def __init__(self) -> None:
@@ -21,10 +22,10 @@ class TicTacToe:
         ) -> List[int]:
         marks = []
         x = 0
-        for cols in board:
+        for rows in board:
             y = 0
-            for row in cols:
-                if row == player:
+            for col in rows:
+                if col == player:
                     marks.append((x, y))
                 y += 1
             x += 1
@@ -51,6 +52,9 @@ class TicTacToe:
             for win_condition in _win_conditions(mark):
                 if set(set(win_condition) & set(marks)) == set(win_condition):
                     print("{} is winner.".format(player))
+
+                    return player
+        return -1
 
 SOCKETS = {}
 GAMEROOMS = []
@@ -210,14 +214,14 @@ while True:
                     and gameRoom["YOUR TURN"] == PLAYER_ONE ) \
                     or ( dict(map(reversed, gameRoom["Player"].items()))[playerName] == "PLAYER_TWO" \
                     and gameRoom["YOUR TURN"] == PLAYER_TWO ):
-                    gameRoom["Board"][int(x)][int(y)] = gameRoom["YOUR TURN"]
+                        gameRoom["Board"][int(y)][int(x)] = gameRoom["YOUR TURN"]
 
-                    if gameRoom["YOUR TURN"] == PLAYER_ONE:
-                        TicTacToe().is_winner(gameRoom["Board"], gameRoom["YOUR TURN"])
-                        gameRoom["YOUR TURN"] = PLAYER_TWO
-                    else:
-                        TicTacToe().is_winner(gameRoom["Board"], gameRoom["YOUR TURN"])
-                        gameRoom["YOUR TURN"] = PLAYER_ONE
+                        if gameRoom["YOUR TURN"] == PLAYER_ONE:
+                            WIN_PLAYER = TicTacToe().is_winner(gameRoom["Board"], gameRoom["YOUR TURN"])
+                            gameRoom["YOUR TURN"] = PLAYER_TWO
+                        else:
+                            WIN_PLAYER = TicTacToe().is_winner(gameRoom["Board"], gameRoom["YOUR TURN"])
+                            gameRoom["YOUR TURN"] = PLAYER_ONE
                 else:
                     print("해당 유저의 턴이 아닙니다.")
 
@@ -233,11 +237,6 @@ while True:
                     gameRoom = next((item for item in GAMEROOMS if playerName in item["Player"].values()), None)
                     players = list(gameRoom["Player"].values())
                     players.remove(playerName)
-                    # print(playerName)
-                    # print(gameRoom["Player"].values())
-                    # print(client_socket.getpeername())
-                    # if playerName in gameRoom["Player"].values():
-                    #     print(SOCKETS[players[0]])
 
                     player = players[0].encode('utf-8')
                     player_header = f"{len(player):<{HEADER_LENGTH}}".encode('utf-8')
@@ -245,7 +244,6 @@ while True:
                     board = gameRoom["Board"]
                     board = pickle.dumps(board)
                     board_header = f"{len(board):<{HEADER_LENGTH}}".encode('utf-8')
-                    print(board_header)
 
                     client_socket.send(
                         user['header'] + user['data']
@@ -253,6 +251,32 @@ while True:
                         + player_header + player
                         + board_header + board
                     )
+
+                if WIN_PLAYER > 0:
+                    tmp = user['data'].decode('utf-8')
+                    playerName = tmp.split(" ")[-1]
+
+                    gameRoom = next((item for item in GAMEROOMS if playerName in item["Player"].values()), None)
+                    players = list(gameRoom["Player"].values())
+                    players.remove(playerName)
+
+                    message = f"{playerName} is winner.".encode('utf-8')
+                    message_header = f"{len(message):<{HEADER_LENGTH}}".encode('utf-8')
+
+                    player = players[0].encode('utf-8')
+                    player_header = f"{len(player):<{HEADER_LENGTH}}".encode('utf-8')
+
+                    board = gameRoom["Board"]
+                    board = pickle.dumps(board)
+                    board_header = f"{len(board):<{HEADER_LENGTH}}".encode('utf-8')
+
+                    client_socket.send(
+                        user['header'] + user['data']
+                        + message_header + message
+                        + player_header + player
+                        + board_header + board
+                    )
+
 
     # It's not really necessary to have this, but will handle some socket exceptions just in case
     for notified_socket in exception_sockets:
