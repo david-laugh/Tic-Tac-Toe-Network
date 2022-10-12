@@ -245,38 +245,22 @@ while True:
                     board = pickle.dumps(board)
                     board_header = f"{len(board):<{HEADER_LENGTH}}".encode('utf-8')
 
-                    client_socket.send(
-                        user['header'] + user['data']
-                        + message['header'] + message['data']
-                        + player_header + player
-                        + board_header + board
-                    )
-
-                if WIN_PLAYER > 0:
-                    tmp = user['data'].decode('utf-8')
-                    playerName = tmp.split(" ")[-1]
-
-                    gameRoom = next((item for item in GAMEROOMS if playerName in item["Player"].values()), None)
-                    players = list(gameRoom["Player"].values())
-                    players.remove(playerName)
-
-                    message = f"{playerName} is winner.".encode('utf-8')
-                    message_header = f"{len(message):<{HEADER_LENGTH}}".encode('utf-8')
-
-                    player = players[0].encode('utf-8')
-                    player_header = f"{len(player):<{HEADER_LENGTH}}".encode('utf-8')
-
-                    board = gameRoom["Board"]
-                    board = pickle.dumps(board)
-                    board_header = f"{len(board):<{HEADER_LENGTH}}".encode('utf-8')
-
-                    client_socket.send(
-                        user['header'] + user['data']
-                        + message_header + message
-                        + player_header + player
-                        + board_header + board
-                    )
-
+                    if WIN_PLAYER > 0:
+                        message = f"{playerName} is winner.".encode('utf-8')
+                        message_header = f"{len(message):<{HEADER_LENGTH}}".encode('utf-8')
+                        client_socket.send(
+                            user['header'] + user['data']
+                            + message_header + message
+                            + player_header + player
+                            + board_header + board
+                        )
+                    else:
+                        client_socket.send(
+                            user['header'] + user['data']
+                            + message['header'] + message['data']
+                            + player_header + player
+                            + board_header + board
+                        )
 
     # It's not really necessary to have this, but will handle some socket exceptions just in case
     for notified_socket in exception_sockets:
