@@ -27,3 +27,6 @@ Join the Game Room User1 User2
 Join the Game Room [ 방 이름 ] [ 플레이어 이름 ]
 ```
 * 플레이어 이름에 `Computer`을 포함하면 Pygame보드가 나타나지 않고, 터미널에서 게임을 진행하게 됩니다.
+
+## TODO
+- 다중 그룹에 대한 에러 수정..
