@@ -235,17 +235,18 @@ while True:
                     playerName = tmp.split(" ")[-1]
 
                     gameRoom = next((item for item in GAMEROOMS if playerName in item["Player"].values()), None)
-                    players = list(gameRoom["Player"].values())
-                    players.remove(playerName)
-
-                    player = players[0].encode('utf-8')
-                    player_header = f"{len(player):<{HEADER_LENGTH}}".encode('utf-8')
 
                     board = gameRoom["Board"]
                     board = pickle.dumps(board)
                     board_header = f"{len(board):<{HEADER_LENGTH}}".encode('utf-8')
 
                     if WIN_PLAYER > 0:
+                        players = list(gameRoom["Player"].values())
+                        players = "_".join(players)
+
+                        player = players.encode('utf-8')
+                        player_header = f"{len(player):<{HEADER_LENGTH}}".encode('utf-8')
+
                         message = f"{playerName} is winner.".encode('utf-8')
                         message_header = f"{len(message):<{HEADER_LENGTH}}".encode('utf-8')
                         client_socket.send(
@@ -254,7 +255,19 @@ while True:
                             + player_header + player
                             + board_header + board
                         )
+                        notified_socket.send(
+                            user['header'] + user['data']
+                            + message_header + message
+                            + player_header + player
+                            + board_header + board
+                        )
                     else:
+                        players = list(gameRoom["Player"].values())
+                        players.remove(playerName)
+
+                        player = players[0].encode('utf-8')
+                        player_header = f"{len(player):<{HEADER_LENGTH}}".encode('utf-8')
+
                         client_socket.send(
                             user['header'] + user['data']
                             + message['header'] + message['data']
