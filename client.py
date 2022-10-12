@@ -209,24 +209,30 @@ while True:
             message_header = client_socket.recv(HEADER_LENGTH)
             message_length = int(message_header.decode('utf-8').strip())
             message = client_socket.recv(message_length).decode('utf-8')
-            if " is winner." in message:
-                print(message)
-                sys.exit()
 
             player_header = client_socket.recv(HEADER_LENGTH)
             player_length = int(player_header.decode('utf-8').strip())
             player = client_socket.recv(player_length).decode('utf-8')
 
-            board_header = client_socket.recv(HEADER_LENGTH)
-            board_length = int(board_header.decode('utf-8').strip())
-            board = client_socket.recv(board_length)
-            BOARD = pickle.loads(board)
+            if my_username in player:
+                board_header = client_socket.recv(HEADER_LENGTH)
+                board_length = int(board_header.decode('utf-8').strip())
+                board = client_socket.recv(board_length)
+                BOARD = pickle.loads(board)
 
-            # Print message
-            # if message
-            if player == my_username:
                 print(f'{username} > {message}')
-            MY_TURN *= -1
+                if " is winner." in message:
+                    print(message)
+                    sys.exit()
+
+                MY_TURN *= -1
+
+            else:
+                board_header = client_socket.recv(HEADER_LENGTH)
+                board_length = int(board_header.decode('utf-8').strip())
+                board = client_socket.recv(board_length)
+                _ = pickle.loads(board)
+
 
     except IOError as e:
         # This is normal on non blocking connections - when there are no incoming data error is going to be raised
