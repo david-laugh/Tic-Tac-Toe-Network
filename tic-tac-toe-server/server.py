@@ -6,6 +6,8 @@ import pickle
 """
 Tic-Tac-Toe Client을 연결하는 서버
 """
+
+
 IP = "127.0.0.1"
 PORT = 3456
 
@@ -90,17 +92,18 @@ def execute():
                             send_message(new_socket, "방에 참여하였습니다.")
                         else:
                             send_message(new_socket, "참여 가능한 방이 없습니다.")
+                            socket_list.remove(new_socket)
 
                 else:
                     message = receive_message(notified_socket, "list")
-                    print(message)
-                    if message is False:
+                    if message == []:
                         # Remove from list for socket.socket()
                         socket_list.remove(notified_socket)
 
                         for room in ROOMS:
                             if notified_socket in room:
                                 room.remove(notified_socket)
+
                     if message:
                         for room in ROOMS:
                             if notified_socket in room:
