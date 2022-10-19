@@ -6,6 +6,11 @@ import re
 import pickle
 
 
+"""
+Tic-Tac-Toe Game Room을 참여하는 Client
+"""
+
+
 IP = "127.0.0.1"
 PORT = 3456
 
@@ -56,30 +61,70 @@ def _player_marks(
         x += 1
     return marks
 
-def is_winner(board: List[List[int]], player: int) -> str:
-    """
-    승리조건 :
-        가로는 y만 +1 증가하는 연속적인 4개의 수
-        세로는 x만 +1 증가하는 연속적인 4개의 수
-        대각선 / 는 x, y가 각각 +1, +1 증가하는 연속적인 4개의 수
-        대각선 \ 는 x, y가 각각 +1, -1 증가하는 연속적인 4개의 수
-    """
-    def _win_conditions(mark):
-        common_differences = [(0, 1), (1, 0), (1, 1), (1, -1)]
-        return [
-            [
-                (mark[0] + e[0] * i, mark[1] + e[1] * i) for i in range(4)
-            ] for e in common_differences
-        ]
+"""
+승리조건 :
+    가로는 y만 +1 증가하는 연속적인 4개의 수
+    세로는 x만 +1 증가하는 연속적인 4개의 수
+    대각선 / 는 x, y가 각각 +1, +1 증가하는 연속적인 4개의 수
+    대각선 \ 는 x, y가 각각 +1, -1 증가하는 연속적인 4개의 수
+"""
+def _win_conditions(mark):
+    common_differences = [(0, 1), (1, 0), (1, 1), (1, -1)]
+    return [
+        [
+            (mark[0] + e[0] * i, mark[1] + e[1] * i) for i in range(4)
+        ] for e in common_differences
+    ]
 
+def is_winner(board: List[List[int]], player: int) -> str:
     marks = _player_marks(board, player)
+
     for mark in marks[:-3]:
         for win_condition in _win_conditions(mark):
             if set(set(win_condition) & set(marks)) == set(win_condition):
                 print("{} is winner.".format(player))
-
                 return player
-    return -1
+
+    return 0
+
+def game_draw():
+    draw_conditions = []
+
+    for player in [PLAYER_ONE, PLAYER_TWO]:
+        tmp_board = []
+        for rows in BOARD:
+            t = []
+            for col in rows:
+                if col == player or col == 0:
+                    t.append(0)
+                else:
+                    t.append(col)
+            tmp_board.append(t)
+
+        marks = _player_marks(tmp_board, 0)
+        for mark in marks[:-3]:
+            for win_condition in _win_conditions(mark):
+                if set(set(win_condition) & set(marks)) == set(win_condition):
+                    draw_conditions.append(False)
+                    break
+
+    if draw_conditions[0] == False or draw_conditions[1] == False:
+        return False
+    else:
+        return True
+
+def print_board():
+    print("+---+---+---+---+---+")
+    for i in range(5):
+        for j in range(5):
+            if BOARD[i][j] == 1:
+                print("| 0", end=" ")
+            elif BOARD[i][j] == -1:
+                print("| X", end=" ")
+            else:
+                print("|  ", end=" ")
+        print("|")
+        print("+---+---+---+---+---+")
 
 
 TOKEN = "<JOIN>"
@@ -97,20 +142,40 @@ def execute():
 
         while True:
             if TURN_TOKEN == 1:
-                message = input("Your Turn : ")
+                draw = game_draw()
+                if draw:
+                    send_message(s, [], "list")
+                    print("무승부입니다.")
+                    sys.exit()
 
+                message = input("Your Turn : ")
                 if re.fullmatch("[0-9], [0-9]", message):
                     x, y = message.split(', ')
                     BOARD[int(y)][int(x)] = PLAYER
-                    print(BOARD)
+                    print_board()
+
+                    winner = is_winner(BOARD, PLAYER_ONE)
+                    if winner == PLAYER_ONE:
+                        send_message(s, [], "list")
+                        break
+
                     send_message(s, BOARD, type="list")
                     TURN_TOKEN *= -1
-                    print(TURN_TOKEN)
 
             elif TURN_TOKEN == -1:
                 try:
+                    draw = game_draw()
+                    if draw:
+                        print("무승부입니다.")
+                        break
+
                     message = receive_message(s, "list")
-                    print(message)
+                    BOARD[:] = message
+                    print_board()
+                    winner = is_winner(BOARD, PLAYER_TWO)
+                    if winner == PLAYER_TWO:
+                        break
+
                     TURN_TOKEN *= -1
 
                 except IOError as e:

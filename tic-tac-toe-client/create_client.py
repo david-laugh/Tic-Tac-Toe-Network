@@ -5,6 +5,11 @@ import pickle
 import random
 
 
+"""
+Tic-Tac-Toe Game Room을 생성하는 Client
+"""
+
+
 IP = "127.0.0.1"
 PORT = 3456
 
